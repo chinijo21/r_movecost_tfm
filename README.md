@@ -1,6 +1,23 @@
-# r_movecost_tfm
-Descripción del Proyecto
-El código automatiza la evaluación de los costes de transporte desde yacimientos arqueológicos hacia sus áreas de recurso y puertos de exportación. 
-Se divide en dos lógicas físicas:Módulo Terrestre: Calcula el esfuerzo físico basado en la pendiente topográfica mediante el paquete movecost.
-Módulo Marítimo (Cabotaje): Modela la navegación costera aplicando fricción dinámica de viento y oleaje mediante gdistance y datos del programa Copernicus, siguiendo los parámetros metodológicos aplicados a la navegación de la Edad del Hierro.  Requisitos previosPara ejecutar el análisis, necesitas tener instalado R (versión 4.0 o superior) y los siguientes paquetes:Rinstall.packages(c("movecost", "raster", "terra", "sp", "sf", "gdistance", "ncdf4"))
-Datos de Entrada NecesariosColoca los siguientes archivos en el directorio raíz de tu proyecto antes de ejecutar el código:Topografía: Modelo Digital del Terreno (ej. recortado.tif) en ETRS89 / UTM 31N (EPSG: 25831).Vectores (.shp):Punto de origen (yacimiento).Puntos de destino (puertos/fondeaderos).Polígonos de recursos (opcional, para el análisis de captación).Polígono de barrera costera.Datos Oceanográficos: Archivo NetCDF (.nc) descargado de Copernicus Marine Service con las variables históricas de viento (componentes U y V) y altura de oleaje significante (Hs).Parámetros de Navegación AplicadosEl módulo marítimo se calibra con los condicionantes técnicos documentados para embarcaciones de bajo tonelaje de la Edad del Hierro:  Velocidad nominal de trayecto: 3.5 nudos bajo condiciones óptimas o navegación a remo.  Límite de tolerancia al oleaje: Umbral crítico de 1.5 metros de altura significativa. Las celdas que superan este valor reciben una penalización multiplicadora de coste igual a 5.  Penalizaciones por viento: Factores de fricción variables basados en el ángulo de incidencia del viento respecto al rumbo de la proa (multiplicador 1 para viento a favor, 2.5 para viento de costado y 4 para viento en contra o calma).  UsoAbre el script principal (movecost_canribes.R o el archivo bimodal unificado).Edita las variables de las primeras líneas marcadas con la etiqueta ###<-- EDITAR para asegurarte de que las rutas a tus archivos .shp y .nc son correctas.Ejecuta el script por completo.Estructura de Salida (Output)Al finalizar, el script creará automáticamente una carpeta llamada movecost_resultados/ que contendrá todos los productos exportados, listos para visualizar en QGIS o ArcGIS:Rásteres (.tif): Superficies de coste acumulado e isocronas.Vectores (.shp): Geometría de las rutas de menor coste (LCP) terrestres y marítimas.Tablas (.csv): Desglose de hectáreas por banda de isocrona, validación de robustez de algoritmos y la tabla final consolidada con el coste bimodal total (tiempo de acceso terrestre + navegación).
+```markdown
+# Modelado de Coste de Movimiento Terrestre y Marítimo - Can Ribes II
+
+Este repositorio contiene el script principal en R desarrollado para el análisis de paleoconectividad, cálculo de superficies de coste acumulado y modelado bimodal (terrestre-marítimo) aplicado al yacimiento arqueológico de Can Ribes II. 
+
+El análisis integra variables topográficas, distribución de recursos bióticos y geológicos, y penalizaciones físicas ambientales (viento y oleaje) para evaluar los patrones de movilidad y captación económica.
+
+## Estructura del Análisis
+
+El script (`movecost_canribes.R`) centraliza el flujo de trabajo en cinco bloques secuenciales:
+
+1. **Preparación y Blindaje de Datos:** Carga del Modelo Digital del Terreno (MDT), definición del CRS del proyecto (ETRS89 / UTM 31N) y procesamiento de geometrías (conversión automática de multipuntos a puntos y control de valores NoData).
+2. **Logística de Entrada (Áreas de Captación):** Generación de la superficie de coste acumulado en horas desde el yacimiento, cálculo de bandas isócronas personalizadas y extracción automatizada de estadísticas de recursos (hectáreas disponibles por recurso físico según intervalos de tiempo).
+3. **Logística de Salida (Rutas de Menor Coste):** Trazado de los *Least Cost Paths* (LCP) terrestres desde el origen hasta los destinos especificados, exportando métricas de distancia (km) y tiempos estimados de trayecto.
+4. **Análisis de Robustez:** Evaluación comparativa del comportamiento de las rutas utilizando seis funciones de coste algorítmicas diferentes (Tobler, Pandolf, Herzog, Uriarte, Llobera y Wheeler/wcs para transporte rodado) con el fin de contrastar los modelos analíticos.
+5. **Modelo Marítimo Bimodal (Cabotaje):** Implementación de un modelo de fricción anisotrópica para la navegación costera basado en datos de reanálisis climático (viento y oleaje de archivos NetCDF). Incorpora límites operativos de la embarcación (umbral de oleaje de 1.5 m y vientos superiores a 15 nudos) y restricciones de visibilidad costera (fórmula de Andrew 2020).
+
+## Requisitos del Sistema
+
+Para ejecutar el script es necesario contar con un entorno de R con las siguientes librerías instaladas:
+
+```R
+install.packages(c("movecost", "raster", "sp", "sf", "gdistance", "ncdf4", "Matrix", "igraph
